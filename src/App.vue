@@ -163,6 +163,7 @@ import {
   type LetterFeedback,
   type LetterState,
 } from "./utils/wordFilter";
+import { getEffectiveLength } from "./utils/wordPlural";
 
 const articleInput = ref("");
 const allWords = ref<string[]>([]);
@@ -178,7 +179,8 @@ const wordCount = computed(() => allWords.value.length);
 
 const filteredWords = computed(() => {
   if (!currentWord.value || feedbacks.value.length === 0) {
-    return allWords.value.filter((w) => w.length === wordLength.value);
+    // 使用有效长度（单数形式的长度）进行过滤
+    return allWords.value.filter((w) => getEffectiveLength(w) === wordLength.value);
   }
   return filterWordsByFeedback(
     allWords.value,
@@ -228,8 +230,9 @@ function startNewGame() {
     return;
   }
 
+  // 使用有效长度（单数形式的长度）进行过滤
   const availableWords = allWords.value.filter(
-    (w) => w.length === wordLength.value
+    (w) => getEffectiveLength(w) === wordLength.value
   );
   if (availableWords.length === 0) {
     alert(`No words found with length ${wordLength.value}`);

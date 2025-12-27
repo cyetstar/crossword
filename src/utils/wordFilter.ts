@@ -1,3 +1,5 @@
+import { getEffectiveLength } from './wordPlural';
+
 /**
  * 字母状态类型
  */
@@ -20,7 +22,8 @@ export function filterWordsByFeedback(
   feedbacks: LetterFeedback[][],
   wordLength: number
 ): string[] {
-  let filtered = words.filter(word => word.length === wordLength);
+  // 使用有效长度（单数形式的长度）进行过滤
+  let filtered = words.filter(word => getEffectiveLength(word) === wordLength);
   
   for (const feedback of feedbacks) {
     filtered = filtered.filter(word => {
