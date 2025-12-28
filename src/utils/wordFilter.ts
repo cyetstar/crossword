@@ -1,4 +1,4 @@
-import { getEffectiveLength } from './wordPlural';
+import { getEffectiveLength, getSingularForm } from './wordPlural';
 
 /**
  * 字母状态类型
@@ -38,7 +38,9 @@ export function filterWordsByFeedback(
  * 检查单词是否匹配反馈
  */
 function matchesFeedback(word: string, feedback: LetterFeedback[]): boolean {
-  const wordArray = word.split('');
+  // 使用单数形式来匹配反馈（因为反馈是基于单数形式的）
+  const singularWord = getSingularForm(word);
+  const wordArray = singularWord.split('');
   
   // 收集每个位置的反馈
   const positionFeedback: Map<number, LetterFeedback> = new Map();

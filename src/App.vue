@@ -2,6 +2,18 @@
   <div class="app-container">
     <h1 class="title">Crossword Solver</h1>
 
+    <!-- Daily Word Link -->
+    <div class="daily-word-section">
+      <a
+        href="https://www.binance.com/zh-CN/activity/word-of-the-day/entry"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="daily-word-link"
+      >
+        📚 Word of the Day
+      </a>
+    </div>
+
     <!-- Article Input Section -->
     <div class="input-section">
       <div class="input-group">
@@ -44,7 +56,7 @@
     <div v-if="currentWord" class="game-section">
       <div class="word-display">
         <div
-          v-for="(letter, index) in currentWord.split('')"
+          v-for="(letter, index) in displayWord.split('')"
           :key="index"
           class="letter-box"
           :class="getLetterClass(index)"
@@ -138,10 +150,21 @@
           <h2>All Words ({{ wordCount }})</h2>
           <button class="close-btn" @click="closeWordList">×</button>
         </div>
+        <div class="word-list-filter">
+          <input
+            type="text"
+            v-model="wordListFilter"
+            placeholder="Filter by letters (e.g., abc)"
+            class="word-list-filter-input"
+          />
+          <span v-if="wordListFilter" class="filter-count">
+            {{ filteredWordList.length }} words
+          </span>
+        </div>
         <div class="word-list-modal-body">
           <div class="word-list-grid">
             <span
-              v-for="(word, index) in allWords"
+              v-for="(word, index) in filteredWordList"
               :key="index"
               class="word-list-item"
             >
@@ -163,7 +186,7 @@ import {
   type LetterFeedback,
   type LetterState,
 } from "./utils/wordFilter";
-import { getEffectiveLength } from "./utils/wordPlural";
+import { getEffectiveLength, getSingularForm } from "./utils/wordPlural";
 
 const articleInput = ref("");
 const allWords = ref<string[]>([]);
@@ -174,13 +197,63 @@ const guessedWords = ref<string[]>([]);
 const feedbacks = ref<LetterFeedback[][]>([]);
 const loading = ref(false);
 const showWordList = ref(false);
+const wordListFilter = ref("");
 
 const wordCount = computed(() => allWords.value.length);
+
+// 显示单词（如果是复数，显示单数形式）
+const displayWord = computed(() => {
+  if (!currentWord.value) return "";
+  return getSingularForm(currentWord.value);
+});
+
+// 过滤单词列表（根据输入的字母，不考虑顺序）
+const filteredWordList = computed(() => {
+  if (!wordListFilter.value.trim()) {
+    return allWords.value;
+  }
+
+  const filterLetters = wordListFilter.value
+    .toLowerCase()
+    .replace(/[^a-z]/g, "")
+    .split("");
+
+  if (filterLetters.length === 0) {
+    return allWords.value;
+  }
+
+  // 统计每个字母在过滤条件中出现的次数
+  const letterCounts: Map<string, number> = new Map();
+  for (const letter of filterLetters) {
+    letterCounts.set(letter, (letterCounts.get(letter) || 0) + 1);
+  }
+
+  return allWords.value.filter((word) => {
+    const wordLower = word.toLowerCase();
+    // 统计单词中每个字母的出现次数
+    const wordLetterCounts: Map<string, number> = new Map();
+    for (const letter of wordLower) {
+      wordLetterCounts.set(letter, (wordLetterCounts.get(letter) || 0) + 1);
+    }
+
+    // 检查单词是否包含所有过滤字母（每个字母至少出现指定次数）
+    for (const [letter, requiredCount] of letterCounts) {
+      const actualCount = wordLetterCounts.get(letter) || 0;
+      if (actualCount < requiredCount) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+});
 
 const filteredWords = computed(() => {
   if (!currentWord.value || feedbacks.value.length === 0) {
     // 使用有效长度（单数形式的长度）进行过滤
-    return allWords.value.filter((w) => getEffectiveLength(w) === wordLength.value);
+    return allWords.value.filter(
+      (w) => getEffectiveLength(w) === wordLength.value
+    );
   }
   return filterWordsByFeedback(
     allWords.value,
@@ -190,8 +263,8 @@ const filteredWords = computed(() => {
 });
 
 const isAllGreen = computed(() => {
-  if (!currentWord.value) return false;
-  for (let i = 0; i < currentWord.value.length; i++) {
+  if (!displayWord.value) return false;
+  for (let i = 0; i < displayWord.value.length; i++) {
     if (getLetterState(i) !== "green") {
       return false;
     }
@@ -297,15 +370,15 @@ function getStateIcon(state: LetterState): string {
 }
 
 function getNextWord() {
-  if (!currentWord.value) return;
+  if (!currentWord.value || !displayWord.value) return;
 
-  // 保存当前反馈
+  // 保存当前反馈（使用单数形式）
   const feedback: LetterFeedback[] = [];
-  for (let i = 0; i < currentWord.value.length; i++) {
+  for (let i = 0; i < displayWord.value.length; i++) {
     const state = getLetterState(i);
     if (state !== "none") {
       feedback.push({
-        letter: currentWord.value[i],
+        letter: displayWord.value[i],
         position: i,
         state: state,
       });
@@ -318,9 +391,9 @@ function getNextWord() {
     return;
   }
 
-  if (feedback.length < currentWord.value.length) {
+  if (feedback.length < displayWord.value.length) {
     const confirmContinue = confirm(
-      `You only set ${feedback.length}/${currentWord.value.length} letters' states. Continue?`
+      `You only set ${feedback.length}/${displayWord.value.length} letters' states. Continue?`
     );
     if (!confirmContinue) {
       return;
@@ -412,8 +485,33 @@ function closeWordList() {
 .title {
   text-align: center;
   color: #f0b90b;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   font-size: 2.5em;
+}
+
+.daily-word-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.daily-word-link {
+  display: inline-block;
+  padding: 12px 24px;
+  background: #1f1f1f;
+  border: 2px solid #f0b90b;
+  border-radius: 8px;
+  color: #f0b90b;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.daily-word-link:hover {
+  background: #f0b90b;
+  color: #1a1a1a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(240, 185, 11, 0.3);
 }
 
 .input-section,
@@ -798,6 +896,36 @@ function closeWordList() {
 
 .close-btn:hover {
   background: #c0392b;
+}
+
+.word-list-filter {
+  padding: 15px 20px;
+  border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.word-list-filter-input {
+  flex: 1;
+  padding: 10px 15px;
+  background: #1a1a1a;
+  border: 2px solid #3a3a3a;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.word-list-filter-input:focus {
+  outline: none;
+  border-color: #f0b90b;
+}
+
+.filter-count {
+  color: #a0a0a0;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .word-list-modal-body {
