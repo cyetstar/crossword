@@ -193,6 +193,7 @@ const allWords = ref<string[]>([]);
 const wordLength = ref<number>(5);
 const currentWord = ref<string | null>(null);
 const letterStates = ref<Map<number, LetterState>>(new Map());
+const clickedLetters = ref<Set<number>>(new Set()); // 跟踪用户点击过的字母
 const guessedWords = ref<string[]>([]);
 const feedbacks = ref<LetterFeedback[][]>([]);
 const loading = ref(false);
@@ -316,13 +317,14 @@ function startNewGame() {
   if (word) {
     currentWord.value = word;
     letterStates.value.clear();
+    clickedLetters.value.clear();
     feedbacks.value = [];
     guessedWords.value = [];
   }
 }
 
 function getLetterState(index: number): LetterState {
-  return letterStates.value.get(index) || "none";
+  return letterStates.value.get(index) || "gray";
 }
 
 function toggleLetterState(index: number) {
@@ -332,9 +334,6 @@ function toggleLetterState(index: number) {
   let nextState: LetterState;
 
   switch (currentState) {
-    case "none":
-      nextState = "gray";
-      break;
     case "gray":
       nextState = "yellow";
       break;
@@ -342,13 +341,14 @@ function toggleLetterState(index: number) {
       nextState = "green";
       break;
     case "green":
-      nextState = "none";
+      nextState = "gray";
       break;
     default:
       nextState = "gray";
   }
 
   letterStates.value.set(index, nextState);
+  clickedLetters.value.add(index); // 标记该字母已被用户点击
 }
 
 function getLetterClass(index: number): string {
@@ -372,11 +372,11 @@ function getStateIcon(state: LetterState): string {
 function getNextWord() {
   if (!currentWord.value || !displayWord.value) return;
 
-  // 保存当前反馈（使用单数形式）
+  // 保存当前反馈（使用单数形式），只包含用户点击过的字母
   const feedback: LetterFeedback[] = [];
   for (let i = 0; i < displayWord.value.length; i++) {
-    const state = getLetterState(i);
-    if (state !== "none") {
+    if (clickedLetters.value.has(i)) {
+      const state = getLetterState(i);
       feedback.push({
         letter: displayWord.value[i],
         position: i,
@@ -410,6 +410,7 @@ function getNextWord() {
   if (nextWord) {
     currentWord.value = nextWord;
     letterStates.value.clear();
+    clickedLetters.value.clear();
   } else {
     console.log("Current feedback:", feedback);
     console.log("All feedbacks:", feedbacks.value);
@@ -432,12 +433,14 @@ function selectWord(word: string) {
     // 新单词，直接设置
     currentWord.value = word;
     letterStates.value.clear();
+    clickedLetters.value.clear();
   }
 }
 
 function restartWithWord(word: string) {
   currentWord.value = word;
   letterStates.value.clear();
+  clickedLetters.value.clear();
   // 清除该单词之后的所有反馈，保留该单词本身
   const index = guessedWords.value.indexOf(word);
   if (index >= 0) {
@@ -452,6 +455,7 @@ function restartWithWord(word: string) {
 function clearAll() {
   currentWord.value = null;
   letterStates.value.clear();
+  clickedLetters.value.clear();
   feedbacks.value = [];
   guessedWords.value = [];
 }
@@ -461,6 +465,7 @@ function clearHistory() {
   feedbacks.value = [];
   if (currentWord.value) {
     letterStates.value.clear();
+    clickedLetters.value.clear();
   }
 }
 
