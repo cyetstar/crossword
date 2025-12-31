@@ -372,38 +372,19 @@ function getStateIcon(state: LetterState): string {
 function getNextWord() {
   if (!currentWord.value || !displayWord.value) return;
 
-  // 保存当前反馈（使用单数形式），只包含用户点击过的字母
+  // 保存当前反馈（使用单数形式），所有字母都包含，没点击的默认为灰色
   const feedback: LetterFeedback[] = [];
   for (let i = 0; i < displayWord.value.length; i++) {
-    if (clickedLetters.value.has(i)) {
-      const state = getLetterState(i);
-      feedback.push({
-        letter: displayWord.value[i],
-        position: i,
-        state: state,
-      });
-    }
+    const state = getLetterState(i); // 没点击的默认返回 "gray"
+    feedback.push({
+      letter: displayWord.value[i],
+      position: i,
+      state: state,
+    });
   }
 
-  // Check if all letters have feedback
-  if (feedback.length === 0) {
-    alert("Please set at least one letter's state");
-    return;
-  }
-
-  if (feedback.length < displayWord.value.length) {
-    const confirmContinue = confirm(
-      `You only set ${feedback.length}/${displayWord.value.length} letters' states. Continue?`
-    );
-    if (!confirmContinue) {
-      return;
-    }
-  }
-
-  if (feedback.length > 0) {
-    feedbacks.value.push(feedback);
-    guessedWords.value.push(currentWord.value);
-  }
+  feedbacks.value.push(feedback);
+  guessedWords.value.push(currentWord.value);
 
   // Get next word
   const nextWord = getRandomWord(filteredWords.value);
